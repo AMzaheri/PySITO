@@ -2,10 +2,11 @@
 #   Filename:  run_idwt.py
 #   Purpose:   Implementing Image Domain Wavefield Tomography
 #   Developed by:    Afsaneh Mohammadzaheri
-#   Email:     a.mohammadzaheri@leeds.ac.uk
-#   License:   ?
+#   Email:     afsaneh.mohamadzaheri@gmail.com
+#   License:   GPL v3.0
 #----------------------------------------------------
 #------------------------------------Import libraries
+
 import sys
 import os, time
 import numpy as np
@@ -14,20 +15,19 @@ import matplotlib.pyplot as plt
 from devito import Function
 from examples.seismic.acoustic import AcousticWaveSolver
 
-from InputReader import Inparam
-from ModelClass import prepare_models, gaussian_monitor, prepare_toy_models
-from GeometryClass import prepare_geometry
+from src.InputReader import Inparam
+from src.ModelClass import prepare_models, gaussian_monitor
+from src.GeometryClass import prepare_geometry
 
-from imaging_operator import migration_image, postStack_migration
-from operators import Laplacian, calculate_alfa, laplacian_op
+from src.imaging_operator import migration_image, postStack_migration
+from src.operators import Laplacian, calculate_alfa, laplacian_op
 
-from WarpModule import find_warp
+from src.WarpModule import find_warp
 
-from gradient_op import compute_id_grad, compute_id_grad_2
-from inversion_utils import update_velocity, cost_function
-from utils import smooth_gradient
-
-from utils import plot_image, plot_velocity
+from src.gradient_op import compute_id_grad, compute_id_grad_2
+from src.inversion_utils import update_velocity, cost_function
+from src.utils import smooth_gradient,\
+                      plot_image, plot_velocity
 #try:
 from termcolor import colored, cprint
 #except:
@@ -44,16 +44,8 @@ inpara = Inparam(inp_idwt_file=infile)
 
 cprint('[ModelClass.py]: Creating Baseline and Monitor models', \
         'magenta')
-toy_model = 0
-if toy_model:
-    modelb, modelb0, modelm = prepare_toy_models(inpara)
-else:
-    modelb = prepare_models(inpara, 'baseline')
-    modelb0 = prepare_models(inpara, 'smooth_baseline', grid=modelb.grid)
-    modelm = prepare_models(inpara, 'monitor', grid=modelb.grid)
-#modelm = gaussian_monitor(modelb, inpara, rank=0)
-#prepare_toy_models(inpara)
 
+modelb, modelb0, modelm = prepare_models(inpara)
 #print(modelb.critical_dt, modelb0.critical_dt, modelm.critical_dt)
 #quit()
 #--------------------------------------------geometry
@@ -101,7 +93,7 @@ for i_iter in range(inpara.n_iter):
         imageb = laplacian_op(image_b, modelb0, image_term=True)
         
         #print(np.max(imageb.data))
-        image_vmax = 1e-3 * np.max(imageb.data)  #np.quantile(imageb.data, .95))
+        image_vmax = 1e-2 * np.max(imageb.data)  #np.quantile(imageb.data, .95))
         plot_image(imageb.data, modelb0, inpara.outpath,
                  'baseline', vmin=-image_vmax, vmax=image_vmax, cmap='gray')
         #quit()
@@ -115,6 +107,9 @@ for i_iter in range(inpara.n_iter):
         plot_image(imagem.data, modelb0, inpara.outpath,
                  'monitor', vmin=-image_vmax, vmax=image_vmax, cmap='gray')
 
+
+        plot_image(imagem.data - imageb.data, modelb0, inpara.outpath,
+                 'monitor_base_diff', vmin=-image_vmax, vmax=image_vmax, cmap='gray')
         #-------------------------------------------------------Warp 
         cprint('[Warping Function]: post-stack inversion iter = {}'\
                .format(i_iter+1), 'magenta')
@@ -132,28 +127,29 @@ for i_iter in range(inpara.n_iter):
         plot_image(warped_image, modelb0, inpara.outpath,
                  'warped', vmin=-image_vmax, vmax=image_vmax, cmap='gray')
         #quit()
-        #---------------------------------plot trace
+        #---------------------------------plot traces
         plt.figure()
-        plt.plot(imagem.data[301,150:], c='r', label='monitor')
-        plt.plot(imageb.data[301,150:], c='b', label='baseline')
+        plt.plot(imagem.data[460,nbl:-nbl], c='r', label='monitor')
+        plt.plot(imageb.data[460,nbl:-nbl], c='b', label='baseline')
         plt.legend()
         plt.savefig('./outfiles/trace_base_monitor.png')
         plt.figure()
-        plt.plot(imagem.data[301,150:], c='r', label='monitor')
-        plt.plot(warped_image[301,150:], c='k', label='warped')
+        plt.plot(imagem.data[460,nbl:-nbl], c='r', label='monitor')
+        plt.plot(warped_image[460,nbl:-nbl], c='k', label='warped')
         plt.legend()
         plt.savefig('./outfiles/trace_warpedimg_monitor.png')
-
+        
         plt.figure()
-        plt.plot(warped_image[301,150:], c='k', label='warped')
-        plt.plot(imageb.data[301,150:], c='b', label='baseline')
+        print(f'imagem.data.shape = {imagem.data.shape}')
+        plt.plot(warped_image[460,nbl:-nbl], c='k', label='warped')
+        plt.plot(imageb.data[460,nbl:-nbl], c='b', label='baseline')
         plt.legend()
         plt.savefig('./outfiles/trace_base_warpedimg.png')
-        quit()
+        #quit()
         #----------------------------------------------------- cost
         cprint(f'[Cost function]: inversion iter = {i_iter+1}', 'magenta')
         cost_val += cost_function(shift, modelb0)
-
+        print(cost_val)
         #------------------------------------------------------mask
 
         #from MaskModule import target_oriented_mask
@@ -164,8 +160,12 @@ for i_iter in range(inpara.n_iter):
                .format(i_iter+1), 'magenta')
         #alfa = calculate_alfa(imagem, imageb,  modelb0, shift, inpara)
         alfa = calculate_alfa(imageb, warped_image,  modelb0, shift, inpara)
-        alfa = laplacian_op(alfa, modelb0, image_term=False)
+        #alfa = laplacian_op(alfa, modelb0, image_term=False)
         print('     ')
+        plot_image(alfa, modelb0, inpara.outpath,
+                       'alpha', vmin=-np.max(alfa), 
+                       vmax=np.max(alfa), cmap='seismic')
+        quit() 
         # -------------------------------------gradient
         for ishot in range(inpara.nshots):
             cprint('[Post-stack gradient operator]: inversion iter = {}: source {}/{}'. \
@@ -189,7 +189,11 @@ for i_iter in range(inpara.n_iter):
             gradient[nbl:-nbl, nbl:-nbl] += smooth_grad
 
             #gradient[:,:] += grad.data[:,:]
-
+        grad_max = np.max(gradient)
+        plot_image(gradient, modelb0, inpara.outpath,
+                       'total_grad', vmin=-grad_max, 
+                       vmax=grad_max, cmap='seismic')
+        quit()
 #---------------------------------------------------Pre-stack IDWT
     elif inpara.grad_type == 'pre':
         #------------------------------------------------------Pre stack IDWT loop 

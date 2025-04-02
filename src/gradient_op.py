@@ -326,14 +326,14 @@ def compute_id_grad_devito(model, grad_geometry, geometry_devito, \
     grad.data[:,:] = grads.data[:,:] + total_gradr.data[:,:]
 
 
-    #plot_gradient(gradr, model, grad_geometry.rec_positions, grad_geometry.src_positions, \
-    #              alfa, 'gradr_%s' % ishot, inparam, \
-    #              vmin=-np.max(gradr.data), vmax=np.max(gradr.data))
+    plot_gradient(gradr, model, grad_geometry.rec_positions, grad_geometry.src_positions, \
+                  alfa, 'gradr_%s' % ishot, inparam, \
+                  vmin=-np.max(gradr.data), vmax=np.max(gradr.data))
 
 
-    #plot_gradient(grads, model, grad_geometry.rec_positions, grad_geometry.src_positions, \
-    #              alfa, 'grads_%s' % ishot, inparam, \
-    #              vmin=-np.max(grads.data), vmax=np.max(grads.data))
+    plot_gradient(grads, model, grad_geometry.rec_positions, grad_geometry.src_positions, \
+                  alfa, 'grads_%s' % ishot, inparam, \
+                  vmin=-np.max(grads.data), vmax=np.max(grads.data))
     return grad
 
 #---------------------------------------------gradient_geometry

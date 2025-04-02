@@ -1,6 +1,7 @@
 import os
 import numpy as np
 from scipy import ndimage
+from scipy.signal import butter, filtfilt
 
 import copy
 
@@ -266,13 +267,13 @@ def smooth_gradient(arr, n):
     return y
 
 #------------------------------------plot_toy_velocity
-def plot_toy_velocity(model, inpara, filename):
+def plot_toy_velocity(model, inpara, filename, vmin=None, vmax=None):
 
     #print('Plot %s' %filename)
     nbl = model.nbl
     field = model.vp.data[nbl:-nbl, nbl:-nbl]
     plot = plt.imshow(np.transpose(field), cmap = 'jet', \
-               vmin = np.min(field), vmax = np.max(field))
+               vmin = vmin, vmax = vmax)
     ax = plt.gca()
     divider = make_axes_locatable(ax)
     cax = divider.append_axes("right", size="5%", pad=0.05)
@@ -361,3 +362,108 @@ def mask_function(warp, inpara, iter_num, baseline_velocity=None, updated_veloci
     plt.close()
 
     return mask
+
+#---------------------------------bandpass_filter
+def bandpass_filter(data, inpara):
+    if inpara.filter_data_info[3]:
+        print('Filtering data')
+        filtered_data = bandpass_filter_1d(data, inpara)
+    if inpara.filter_image_info[3]:
+        filtered_data = bandpass_filter_2d(data, inpara)
+    return 
+#---------------------------------bandpass rtm image
+def bandpass_filter_2d(data, inpara): #lowcut, highcut, fs, order=4):
+    """
+    Apply a band-pass filter to the data.
+    """
+    power_spectrum_data = power_spectrum_2d(data)
+    
+    # filtering
+    nyquist = 0.5 * inpara.filter_image_info[0]
+    low = inpara.filter_image_info[1] / nyquist
+    high = inpara.filter_image_info[2] / nyquist
+    b, a = butter(N=4, Wn=[low, high], btype='band')
+    filtered_data = filtfilt(b, a, data, axis=0)  # Apply along depth axis
+
+    return filtered_data
+#-------------------------------------------- power_spectrum
+def power_spectrum_2d(image):
+    # Compute the 2D Fourier Transform
+    fft_image = np.fft.fft2(image)
+    # Shift the zero frequency to the center
+    fft_image_shifted = np.fft.fftshift(fft_image)
+    # Compute the power spectrum (magnitude squared)
+    power_spectrum = np.abs(fft_image_shifted) ** 2
+    return power_spectrum
+
+# Compute power spectra for the baseline and monitor RTM images
+#power_spectrum_baseline = compute_power_spectrum(rtm_baseline)
+#power_spectrum_monitor = compute_power_spectrum(rtm_monitor)
+
+# Average the power spectra for simplicity, or analyze them separately
+#power_spectrum_avg = (power_spectrum_baseline + power_spectrum_monitor) / 2
+
+#--------------------------------------------bandpass_filter_1d
+def bandpass_filter_1d(seismic_data, inpara):
+    """
+    Apply a band-pass filter to a 1D seismic data array.
+    """
+    filtered_seismic_data = []
+    nyquist = 0.5 * inpara.filter_data_info[0]
+    low = inpara.filter_data_info[1] / nyquist
+    high = inpara.filter_data_info[2] / nyquist
+    b, a = butter(N=4, Wn=[low, high], btype='band')
+
+    for i in range(seismic_data.shape[1]):
+        filtered_data = filtfilt(b, a, seismic_data[:,i])
+        filtered_seismic_data.append(filtered_data)
+
+    filtered_seismic_data = np.array(filtered_seismic_data)
+
+    # plot the middle seismic trace
+    i = int(filtered_seismic_data.shape[0]/2)
+    plt.figure(figsize=(12, 6))
+    # Plot original data
+    plt.subplot(2, 1, 1)
+    plt.plot(seismic_data[:,i], label='Original Data')
+    plt.title(f'Receiver {i} - Original Data')
+    plt.xlabel('Time Samples')
+    plt.ylabel('Amplitude')
+    plt.legend()
+        
+    # Plot filtered data
+    plt.subplot(2, 1, 2)
+    plt.plot(filtered_seismic_data[:,i], label='Filtered Data (Band-Pass)', color='orange')
+    plt.title(f'Receiver {i} - Filtered Data')
+    plt.xlabel('Time Samples')
+    plt.ylabel('Amplitude')
+    plt.legend()
+
+    plt.tight_layout()
+    plt.savefig(os.path.join(inpara.outpath, 'filtered_seismic_data_rec_%s.png' %i))
+
+    return filtered_seismic_data
+#--------------------------------------------power_spectrum_1d
+def power_spectrum_1d(data):
+    """
+     # Compute power spectrum for each receiver and stack into an array
+    """
+    power_spectra = []
+    for i in range(data.shape[1]):
+        fft_data = np.fft.fft(data[:,i])
+        power_spectrum = np.abs(fft_data) ** 2
+        power_spectra.append(power_spectrum[:len(fft_data)//2])
+
+    # Convert to a 2D array (receiver x frequency)
+    power_spectra = np.array(power_spectra)
+
+    # Create a heatmap of the power spectrum across receivers
+    plt.figure(figsize=(12, 6))
+    sns.heatmap(np.log(power_spectra + 1), \
+                cmap='viridis', cbar_kws={'label': 'Log Power Spectrum'})
+    plt.xlabel('Frequency Index')
+    plt.ylabel('Receiver Index')
+    plt.title('Power Spectrum Across Receivers')
+    plt.savefig(os.path.join*outpath, 'receiver_data_spectrum_heatmap')
+
+

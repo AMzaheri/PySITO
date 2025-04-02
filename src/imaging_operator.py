@@ -1,6 +1,6 @@
 import numpy as np
 
-from utils import plot_shotrecord
+from utils import bandpass_filter, plot_shotrecord
 
 from examples.seismic.acoustic import AcousticWaveSolver
 from devito import TimeFunction, Operator, Eq, solve
@@ -89,18 +89,30 @@ def postStack_migration(model, model0, geometry, source_locations, i_iter, inpar
         #print(geometry.src_positions[0, :])
         # Generate synthetic data from true model
         true_d, _, _ = solver.forward(vp=model.vp)
+        #print(f'data shape = {true_d.data.shape}')
     
         # Compute smooth data and full forward wavefield u0
         smooth_d, u0, _ = solver.forward(vp=model0.vp, save=True)
 
         # Compute gradient from the data residual  
         v = TimeFunction(name='v', grid=model.grid, time_order=2, space_order=4)
+        
+        if i == int(inparam.nshots/2):
+            #print(np.max(true_d.data))
+            plot_shotrecord((true_d.data), model, \
+                            inparam.t0, inparam.tn, inparam.f0, inparam.nshots, \
+                            inparam.outpath, 'receiver_data', cmap='gray')
+        
+        if inparam.filter_data_info[3]:
+             true_d.data[:,:] = bandpass_filter(true_d.data, inparam)
+             smooth_d.data[:,:] = bandpass_filter(smooth_d.data, inparam)
+
 
         if i == int(inparam.nshots/2):
             #print(np.max(true_d.data))
             plot_shotrecord((true_d.data), model, \
                             inparam.t0, inparam.tn, inparam.f0, inparam.nshots, \
-                            inparam.outpath, 'RecBeforeMask', cmap='gray')
+                            inparam.outpath, 'filtered_receiver_data', cmap='gray')
         # Mask
         if inparam.mask_rec_data:
             residual = PointSource(name='residual', grid=model.grid,

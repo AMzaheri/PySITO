@@ -7,7 +7,9 @@ class Inparam:
         config_ini = configparser.ConfigParser()
         config_ini.read(inp_idwt_file)
         # ---------------section_model
-        self.model_path = eval(config_ini.get('section_model', 'model_path'))
+        self.model_type = eval(config_ini.get('section_model', 'model_type'))
+        if self.model_type == 'None':
+            self.model_path = eval(config_ini.get('section_model', 'model_path'))
         #self.origin_model_shape = eval(config_ini.get('section_model', 'origin_model_shape'))
         #print(self.origin_model_shape[0])
         #self.scale_down = float(config_ini.get('section_model', 'scale_down'))
@@ -70,3 +72,5 @@ class Inparam:
         self.learning_rate = float(config_ini.get('section_inversion', 'learning_rate'))
         self.inv_tol = float(config_ini.get('section_inversion', 'stop_tolerance'))
 
+        self.filter_data_info = eval(config_ini.get('section_filter', 'filter_data_info'))
+        self.filter_image_info = eval(config_ini.get('section_filter', 'filter_image_info'))
