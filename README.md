@@ -17,12 +17,11 @@ An  environment file will be provided to install Devito and other required depen
 
 ## Usage
 
-1- Set input parameters in inputs/inputs_idwt.ini.
-2- Run the inversion by executing:
-    python run_idwt.py
+1. Set input parameters in inputs/inputs_idwt.ini.
+2. Run the inversion by executing: python run_idwt.py
 
 ## Planned Improvements
 
-1- Gradient Debugging: Fixing issues with gradient calculations.
-2- Implement parallelism using MPI for larger simulations.
-3- Provide a YAML file for easy dependency installation.
+1. Gradient Debugging: Fixing issues with gradient calculations.
+2. Implement parallelism using MPI for larger simulations.
+3. Provide a YAML file for easy dependency installation.
